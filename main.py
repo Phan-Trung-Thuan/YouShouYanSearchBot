@@ -334,12 +334,12 @@ You can control me by sending these commands:
 
 /search -ch <text> <image> [-top <number>] [-sortChapterId]
 Searching top relative chapters by text and/or image, text should place between brackets like "text", 'text' or `text`, currently accept multiple keywords and single image, command in [] is optional. Example:
-\t/search -ch -text " DiTiNg|=) BirthDAY. Pikachu" <Image> -top 10 -sortChapterId
+\t/search -ch -text " green HAT" <Image> -top 10 -sortChapterId
 '''
     await update.message.reply_text(text)
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(update.from_user)
+    print(update)
     try:
         if update.message.text != None:
             print(update.message.text)
