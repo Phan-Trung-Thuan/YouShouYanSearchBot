@@ -321,7 +321,7 @@ async def downloader(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = '''
 HAPPY LUNAR NEW YEAR - from Esh
-Welcome, I can answer some questions about YouShouYan on both manhua. Please chat with me in English.
+Welcome, I can help you searching YouShouYan (有兽焉) chapters. Please chat with me in English.
 '''
 
     await update.message.reply_text(text)
