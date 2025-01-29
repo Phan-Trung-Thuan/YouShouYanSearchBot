@@ -147,7 +147,6 @@ def search_chapter_by_text(text, top_n=5):
     results = [(chapter[:4], get_text_matching_score(text, chapter)) for chapter in chapter_text.split('='*40+'\n') if chapter[:4].isnumeric()]
     
     results.sort(key=lambda x: (x[1], x[0]), reverse=True)
-    print(results[:5])
     scores = [score for _, score in results]
     chapter_ids = [id for id, _ in results]
 
@@ -158,7 +157,6 @@ def search_chapter_by_text(text, top_n=5):
     response = []
     for i in range(top_n):
         response.append((chapter_ids[i], scores[i], get_message(chapter_ids[i])))
-    print(response[:5])
 
     return response
 
@@ -334,9 +332,9 @@ You can control me by sending these commands:
 /start - Start the bot
 /help - Get help about using the bot
 
-/search [-chapter/-Ch] <text> <image> -top <number>
-Searching top relative chapters by text and/or image, text should place between brackets like "text" or 'text' or `text` accept multiple keywords and single image. Example:
-\t/search -Ch -text " DiTiNg|=) BirthDAY. Pikachu" <Image> -top 5
+/search -ch <text> <image> [-top <number>] [-sortChapterId]
+Searching top relative chapters by text and/or image, text should place between brackets like "text", 'text' or `text`, currently accept multiple keywords and single image, command in [] is optional. Example:
+\t/search -ch -text " DiTiNg|=) BirthDAY. Pikachu" <Image> -top 10 -sortChapterId
 '''
     await update.message.reply_text(text)
 
@@ -348,6 +346,8 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             print(update.message.caption)
             args = update.message.caption.split(' ')[1:]
+
+        sortChapterId = '-sortChapterId' in ' '.join(args)
 
         if args[0].lower() in ('-chapter', '-ch'):
             if '-top' not in ' '.join(args).lower():
@@ -396,7 +396,9 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             response = response[:topN]
             sum_score = sum([s for _, s, _ in response])
             response = [(chapter_id, score/sum_score, message_id) for chapter_id, score, message_id in response]
-            
+            if sortChapterId:
+                response.sort(key=lambda x: x[0])
+
             print(response)
             response = [f"[Chapter {chapter_id}](https://t.me/youshouyan/{message_id}) Score: {score:.2f}" for chapter_id, score, message_id in response]
             
