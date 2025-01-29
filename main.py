@@ -339,6 +339,7 @@ Searching top relative chapters by text and/or image, text should place between 
     await update.message.reply_text(text)
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(update.from_user)
     try:
         if update.message.text != None:
             print(update.message.text)
@@ -357,7 +358,8 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if '\"' not in ' '.join(args).lower():
                 args.insert(1, None)
 
-            for e, i in enumerate(args):
+            topN = 5
+            for i, e in enumerate(args):
                 if e == '-top':
                     topN = int(args[i + 1])
 
