@@ -357,7 +357,9 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if '\"' not in ' '.join(args).lower():
                 args.insert(1, None)
 
-            topN = int(args[-1])
+            for e, i in enumerate(args):
+                if e == '-top':
+                    topN = int(args[i + 1])
 
             if args[1] is not None:
                 search_text = ' '.join(args[1:])[:' '.join(args[1:]).find('-top')].strip('\',"`').lower()
