@@ -3,22 +3,13 @@ import os
 from tqdm import tqdm
 
 def split_image_into_patches(image_path, output_folder, overlap):
-    """
-    Splits an image into square patches with overlap and saves them.
-    
-    Parameters:
-        image_path (str): Path to the input image.
-        output_folder (str): Path to save the patches.
-        patch_size (int): Size of each square patch (patch_size x patch_size).
-        overlap (float): Overlap ratio (0.1 = 10% overlap).
-    """
     # Output name
     output_name = image_path.split('\\')[-1][:len('You.Shou.Yan.0001')]
 
     # Open the image
     img = Image.open(image_path)
     width, height = img.size
-    patch_size = 400
+    patch_size = width // 4
 
     # Calculate the step size (patch size minus overlap)
     step = int(patch_size * (1 - overlap))
@@ -40,8 +31,8 @@ def split_image_into_patches(image_path, output_folder, overlap):
 
 # Parameters
 folder_path = "database\You.Shou.Yan-comic-en"
-output_folder = "database\You.Shou.Yan-comic-en-patches-400"
-overlap = 0.5
+output_folder = "database\You.Shou.Yan-comic-en-patches-266"
+overlap = 0
 
 for image_path in tqdm(os.listdir(folder_path)):
     image_path = os.path.join(folder_path, image_path)
