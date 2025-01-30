@@ -1,7 +1,8 @@
 import nltk
-import math
+import numpy as np
 import re
 import json
+from Levenshtein import distance
 
 def get_shortest_string(strings):
     if not strings:  # Check if the list is empty
@@ -61,6 +62,10 @@ def get_text_matching_score(input_text: str, document:str):
     confidence_score = counter / len(input_text.split())
 
     return confidence_score
+
+def most_similar_keywords(query, keywords):
+    d = [distance(query, key) for key in keywords]
+    return keywords[np.argmin(d)]
 
 def get_semantic_matching_score(input_text: str, document: str):
     pass

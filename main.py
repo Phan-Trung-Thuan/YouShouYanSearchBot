@@ -160,9 +160,8 @@ def search_chapter_by_text(text, top_n=5):
 
     return response
 
-def process_search_results(embedding, database, indices_mapping, sort_reverse=False):
-    k = 30
-    distances, indices = database.search(embedding, k)
+def process_search_results(embedding, database, indices_mapping, sort_reverse=False, top_n=30):
+    distances, indices = database.search(embedding, top_n)
     distances = distances.flatten()
     indices = indices.flatten()
     results = [(indices_mapping[id], d) for d, id in zip(distances, indices)]
@@ -194,7 +193,7 @@ def search_chapter_by_image(template, top_n=5):
     if w * h < 400*400:
         resnext_embed_results = process_search_results(resnext_embedding, resnext_266_embed_database, 
                                                        resnext_266_embed_indices_mapping, 
-                                                       sort_reverse=True)
+                                                       sort_reverse=True, top_n=top_n*5)
         resnext_sum = sum([d**2 for _, d in resnext_embed_results])
         resnext_embed_results = [(chapter_id, similarity**2/resnext_sum) for chapter_id, similarity in resnext_embed_results]
         tmp = resnext_embed_results[:top_n//5]
@@ -204,7 +203,7 @@ def search_chapter_by_image(template, top_n=5):
 
         resnext_sobel_results = process_search_results(resnext_embedding, resnext_266_sobel_database, 
                                                        resnext_266_sobel_indices_mapping, 
-                                                       sort_reverse=True)
+                                                       sort_reverse=True, top_n=top_n*5)
         resnext_sum = sum([d**2 for _, d in resnext_sobel_results])
         resnext_sobel_results = [(chapter_id, similarity**2/resnext_sum) for chapter_id, similarity in resnext_sobel_results]
         tmp = resnext_sobel_results[:top_n//5]
@@ -214,7 +213,7 @@ def search_chapter_by_image(template, top_n=5):
 
         resnext_laplace_results = process_search_results(resnext_embedding, resnext_266_laplace_database, 
                                                          resnext_266_laplace_indices_mapping, 
-                                                         sort_reverse=True)
+                                                         sort_reverse=True, top_n=top_n*5)
         resnext_sum = sum([d**2 for _, d in resnext_laplace_results])
         resnext_laplace_results = [(chapter_id, similarity**2/resnext_sum) for chapter_id, similarity in resnext_laplace_results]
         tmp = resnext_laplace_results[:top_n//5]
@@ -256,12 +255,13 @@ def search_chapter_by_image(template, top_n=5):
         with torch.no_grad():
             embedding = vit_model(img).squeeze().unsqueeze(0).cpu().numpy()
         vit_embedding = embedding / np.linalg.norm(embedding, axis=1, keepdims=True)
-        vit_results = process_search_results(vit_embedding, vit_800_embed_database, 
-                                             vit_800_embed_indices_mapping, sort_reverse=False)
-        vit_results = [(chapter_id, 1 / (1 + np.e ** (4 * distance - 2))) for chapter_id, distance in vit_results]
-        vit_sum = sum([d**2 for _, d in vit_results])
-        vit_results = [(chapter_id, distance**2/vit_sum) for chapter_id, distance in vit_results]
-        tmp = vit_results[:top_n]
+        vit_embed_results = process_search_results(vit_embedding, vit_800_embed_database, 
+                                                  vit_800_embed_indices_mapping, 
+                                                  sort_reverse=False, top_n=top_n*5)
+        vit_embed_results = [(chapter_id, 1 / (1 + np.e ** (4 * distance - 2))) for chapter_id, distance in vit_embed_results]
+        vit_sum = sum([d**2 for _, d in vit_embed_results])
+        vit_embed_results = [(chapter_id, distance**2/vit_sum) for chapter_id, distance in vit_embed_results]
+        tmp = vit_embed_results[:top_n//5]
         s = sum([d for _, d in tmp])
         tmp = [(chapter_id, distance/s) for chapter_id, distance in tmp]
         print('ViT 800 results:', tmp)
@@ -285,8 +285,8 @@ def search_chapter_by_image(template, top_n=5):
             else:
                 final_results[chapter_id] = resnext_score / 4
 
-    if vit_results is not None:
-        for chapter_id, vit_score in vit_results:
+    if vit_embed_results is not None:
+        for chapter_id, vit_score in vit_embed_results:
           if chapter_id in final_results:
               final_results[chapter_id] += vit_score
           else:
@@ -300,14 +300,12 @@ def search_chapter_by_image(template, top_n=5):
     scores = [score for _, score in final_results]
     chapter_ids = [id for id, _ in final_results]
 
-    scores = scores[:top_n]
     scores = scores / np.sum(scores)
-    chapter_ids = chapter_ids[:top_n]
     
     response = []
     for i in range(top_n):
         response.append((chapter_ids[i], scores[i], get_message(chapter_ids[i])))
-
+    
     return response
     
 async def downloader(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -316,6 +314,46 @@ async def downloader(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = await new_file.download_as_bytearray()
     
     return file
+
+async def debugger(update: Update, context: ContextTypes.DEFAULT_TYPE, args):
+    flag = False
+    if '-ch' not in ' '.join(args).lower() or '-ch' not in ' '.join(args).lower():
+        args.insert(0, '-ch')
+        await update.message.reply_text(
+            f'Your syntax is wrong. You should type like this\n `{" ".join(args)}`',
+            parse_mode="Markdown"
+        )
+        flag = True
+
+    if not (update.message and update.effective_chat and update.message.photo) and not ('\"' in ' '.join(args) or '\'' in ' '.join(args)):
+        await update.message.reply_text(
+            f'Your syntax is wrong. Please enter something to search like `/search -ch "panhu"` or `/search -ch` and paste an image into the searching message',
+            parse_mode="Markdown"
+        )
+        flag = True
+    
+    expected_arguments = ['-ch', '-chapter','-ep', '-episode', '-top', '-sortChapterId']
+    unexpected_arguments = []
+    similar_arguments = []
+    for e in args:
+        if e.startswith('-') and e not in expected_arguments:
+            unexpected_arguments.append(e)
+            similar_arguments.append(most_similar_keywords(e, expected_arguments))
+
+    corrected_args = ' '.join(args)
+    for i in range(len(unexpected_arguments)):
+        corrected_args = corrected_args.replace(unexpected_arguments[i], similar_arguments[i])
+
+    if len(unexpected_arguments) > 0:
+        await update.message.reply_text(
+            f'Unexpected argument(s): {", ".join(unexpected_arguments)}\n' +
+            f'You might want this `/search {corrected_args}`\n' +
+            'Use /help for more information',
+            parse_mode="Markdown"
+        )
+        flag = True
+
+    return flag
 
 # Commands
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -332,11 +370,11 @@ You can control me by sending these commands:
 /start - Start the bot
 /help - Get help about using the bot
 
-/search -ch <text> <image> [-top <number>] [-sortChapterId]
-Searching top relative chapters by text and/or image, text should place between brackets like "text", 'text' or `text`, currently accept multiple keywords and single image, command in [] is optional. Example:
-\t/search -ch -text " green HAT" <Image> -top 10 -sortChapterId
+/search -ch "text"
+Searching top relative chapters by text and/or image, text should place between brackets like "text", 'text' or `text`, currently accept multiple keywords and single image, you should paste the image into the searching message. Add "-top <number>" to search for top relative chapters. Add "-sortChapterId" to sort the searched chapter by id otherwise it will be sorted by score.
+Example: `/search -ch " green HAT" -top 10 -sortChapterId`
 '''
-    await update.message.reply_text(text)
+    await update.message.reply_text(text, parse_mode="Markdown")
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(update)
@@ -347,6 +385,9 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             print(update.message.caption)
             args = update.message.caption.split(' ')[1:]
+
+        if await debugger(update, context, args):
+            return None
 
         sortChapterId = '-sortChapterId' in ' '.join(args)
 
@@ -379,7 +420,9 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 template = Image.open(io.BytesIO(file)).convert("RGB")
 
+                print(topN*5)
                 response_image = search_chapter_by_image(template, top_n=topN*5)
+                print(len(response_image))
             else:
                 response_image = None
 
@@ -411,12 +454,11 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 '\n'.join(response),
                 parse_mode="Markdown"
             )
-        else:
-            print(args)
-            await update.message.reply_text('Please type something to search')
+        elif args[0].lower() in ('-episode', '-ep'):
+            pass
     except Exception as e:
         print(e)
-        await update.message.reply_text('Error, please check the message syntax')
+        await update.message.reply_text('Error, /help for instructions')
 
 # Responses
 def handle_response(text: str) -> str:
