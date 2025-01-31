@@ -371,7 +371,7 @@ You can control me by sending these commands:
 /help - Get help about using the bot
 
 /search -ch "text"
-Searching top relative chapters by text and/or image, text should place between brackets like "text", 'text' or `text`, currently accept multiple keywords and single image, you should paste the image into the searching message. Add "-top <number>" to search for top relative chapters. Add "-sortChapterId" to sort the searched chapter by id otherwise it will be sorted by score.
+Searching top relative chapters by text and/or image, text should place between brackets like "text" or 'text', currently accept multiple keywords and single image, you should paste the image into the searching message. Add "-top <number>" to search for top relative chapters. Add "-sortChapterId" to sort the searched chapter by id otherwise it will be sorted by score.
 Example: `/search -ch " green HAT" -top 10 -sortChapterId`
 '''
     await update.message.reply_text(text, parse_mode="Markdown")
@@ -420,9 +420,7 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 template = Image.open(io.BytesIO(file)).convert("RGB")
 
-                print(topN*5)
                 response_image = search_chapter_by_image(template, top_n=topN*5)
-                print(len(response_image))
             else:
                 response_image = None
 
